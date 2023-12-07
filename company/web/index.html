@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Management</title>
+    <style>
+        /* Estilos base para dispositivos maiores (desktop) */
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        form {
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #2196F3;
+            color: #fff;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0b7dda;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #employeeList {
+            margin-top: 20px;
+        }
+
+        #employeeData {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .error {
+            color: red;
+        }
+
+        /* Media queries para dispositivos menores (mobile) */
+
+        @media screen and (max-width: 600px) {
+            form {
+                padding: 10px;
+            }
+
+            input {
+                margin-bottom: 10px;
+            }
+
+            button {
+                padding: 8px 12px;
+            }
+
+            table {
+                font-size: 14px;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<h1>Employee Management</h1>
+
+<!-- Form for adding or updating employees -->
+<form id="employeeForm">
+    <label for="employeeNumber">Employee Number:</label>
+    <input type="number" id="employeeNumber" name="employeeNumber" required>
+    <br>
+    <label for="name">Name:</label>
+    <input type="text" id="name" name="name" required>
+    <br>
+    <label for="salary">Salary:</label>
+    <input type="number" step="0.01" id="salary" name="salary" required>
+    <br>
+    <label for="gender">Gender:</label>
+    <input type="text" id="gender" name="gender" required>
+    <br>
+    <label for="departmentNumber">Department Number:</label>
+    <input type="number" id="departmentNumber" name="departmentNumber" required>
+    <br>
+    <label for="supervisorNumber">Supervisor Number:</label>
+    <input type="number" id="supervisorNumber" name="supervisorNumber" required>
+    <br>
+    <button type="button" onclick="addEmployee()">Add</button>
+    <button type="button" onclick="updateEmployee()">Update</button>
+    <button type="button" onclick="getEmployeeByNumber()">Get Employee</button>
+    <button type="button" onclick="removeEmployee()">Remove</button>
+    <button type="button" onclick="clearFields()">Clear</button>
+</form>
+
+<div id="employeeList"></div>
+<div id="employeeData"></div>
+
+<script>
+function getEmployees() {
+    fetch('/company/system/rest/employees/all')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(employees => {
+            const employeeListDiv = document.getElementById('employeeList');
+            
+            // Clear existing content
+            employeeListDiv.innerHTML = '';
+
+            // Create a table
+            const table = document.createElement('table');
+            table.border = '1';
+
+            // Create table header
+            const headerRow = document.createElement('tr');
+            for (const key in employees[0]) {
+                const headerCell = document.createElement('th');
+                headerCell.textContent = key;
+                headerRow.appendChild(headerCell);
+            }
+            table.appendChild(headerRow);
+
+            // Create table rows
+            employees.forEach(employee => {
+                const row = document.createElement('tr');
+                for (const key in employee) {
+                    const cell = document.createElement('td');
+                    cell.textContent = employee[key];
+                    row.appendChild(cell);
+                }
+                table.appendChild(row);
+            });
+
+            // Append the table to the div
+            employeeListDiv.appendChild(table);
+        })
+        .catch(error => showError(error.message));
+}
+
+
+function getEmployeeByNumber() {
+    const employeeNumber = document.getElementById('employeeNumber').value;
+
+    fetch(`/company/system/rest/employees/${employeeNumber}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(employee => {
+            showEmployeeData(employee);
+        })
+        .catch(error => showError(error.message));
+}
+
+
+
+function addEmployee() {
+    const form = document.getElementById('employeeForm');
+    const employeeData = extractFormData(form);
+
+    fetch('/company/system/rest/employees', {
+        method: 'POST',
+        body: JSON.stringify(employeeData),
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Error: ${response.status}`);
+        }
+        return response;
+    })
+    .then(() => {
+        console.log('Employee added successfully.');
+        getEmployees();
+    })
+    .catch(error => showError(error.message));
+}
+
+function updateEmployee() {
+    const form = document.getElementById('employeeForm');
+    const employeeData = extractFormData(form);
+
+    fetch('/company/system/rest/employees', {
+        method: 'PUT',
+        body: JSON.stringify(employeeData),
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Error: ${response.status}`);
+        }
+        return response;
+    })
+    .then(() => {
+        console.log('Employee updated successfully.');
+        getEmployees();
+    })
+    .catch(error => showError(error.message));
+}
+
+
+function showEmployeeData(employee) {
+    const employeeDataDiv = document.getElementById('employeeData');
+    employeeDataDiv.innerHTML = '';
+
+    if (employee) {
+        const dataList = document.createElement('ul');
+        for (const key in employee) {
+            const listItem = document.createElement('li');
+            listItem.textContent = `${key}: ${employee[key]}`;
+            dataList.appendChild(listItem);
+        }
+
+        employeeDataDiv.appendChild(dataList);
+    } else {
+        employeeDataDiv.textContent = 'Employee not found';
+    }
+}
+
+function removeEmployee() {
+    const employeeNumber = document.getElementById('employeeNumber').value;
+
+    fetch(`/company/system/rest/employees/${employeeNumber}`, {
+        method: 'DELETE',
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Error: ${response.status}`);
+        }
+        return response;
+    })
+    .then(() => {
+        console.log('Employee removed successfully.');
+        getEmployees();
+    })
+    .catch(error => showError(error.message));
+}
+
+function extractFormData(form) {
+    const data = {};
+    for (const input of form.elements) {
+        if (input.name) {
+            data[input.name] = input.value;
+        }
+    }
+    return data;
+}
+
+function clearFields() {
+    const form = document.getElementById('employeeForm');
+    form.reset();
+}
+
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.style.color = 'red';
+    errorDiv.textContent = `Error: ${message}`;
+    document.body.appendChild(errorDiv);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    getEmployees();
+});
+</script>
+
+</body>
+</html>
